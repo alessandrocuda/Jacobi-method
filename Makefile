@@ -10,7 +10,7 @@ endif
 # define C++ compiler to use
 
 # define any compile-time flags
-CFLAGS = -std=c++11 -O3 -funsafe-math-optimizations #-Wall -g
+CXXFLAGS = -std=c++11 -O3 -funsafe-math-optimizations #-fopt-info-vec-missed   #-Wall -g
 
 LDFLAGS = -lpthread #-lboost_system -lcrypto -lssl -lcpprest -lpthread
 

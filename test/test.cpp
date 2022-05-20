@@ -19,9 +19,9 @@ float tol           = 10e-6;
 int verbose         = 0;
 
 // Data
-matrix_t A;
-vector_t b;
-vector_t x;
+matrix_t A __attribute__((aligned(64)));
+vector_t b __attribute__((aligned(64)));
+vector_t x __attribute__((aligned(64)));
 
 unsigned int seed = 42;
 std::mt19937 gen(seed);
@@ -37,6 +37,7 @@ cout_setup(const ulong n, const ulong mode, const ulong nw)
 
 inline static void 
 init_linear_system(){
+    // has been vectorized, not present with -fopt-info-vector-missed 
     for (ulong i = 0; i < n; ++i) {
         float sum = 0;
         vector_t row_vec;
@@ -65,7 +66,11 @@ main(int argc, char *const argv[]){
 
     // Setup data
     if (verbose) cout << "Setup data...";
-    init_linear_system();
+
+    {
+        utimer timer("init linear system");
+        init_linear_system();
+    }
     
     //static const float range = 4.f;
     // ddm(n, A, range, range);

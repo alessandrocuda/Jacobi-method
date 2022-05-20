@@ -3,6 +3,8 @@
 #include <mutex>
 #include "utils/utimer.cpp"
 #include <typeinfo>
+#include <cfloat>
+
 
 namespace 
 {  
@@ -23,24 +25,22 @@ namespace
     }
 
     inline void init_stop_condition(){
-        error = 0;
-        stopping_count = 0;
+        error = FLT_MAX;
+        //stopping_count = 0;
     }
 
-    inline void compute_stop_condition(const ulong n, const float tol){
+    inline void compute_error(const ulong n, const float tol){
         error = 0;
-        stopping_count = 0;
-        float absolute_error;
+        // has been vectorized, not present with -fopt-info-vector-missed
         for (ulong i = 0; i < n; ++i){
-            absolute_error = std::abs(x[i] - x_next[i]);
-            if (absolute_error <= tol) stopping_count++;
-            error += absolute_error;
+            error += std::abs(x[i] - x_next[i]);
         }
         error /= n;
     }
 
     inline void compute_x_next(const matrix_t &A, const vector_t &b, const int i){
         float sigma = 0;
+        // has been vectorized, not present with -fopt-info-vector-missed
         for (int j = 0; j < A.size(); ++j) {
             sigma += (x[j] * A[i][j]);
         }
@@ -63,15 +63,14 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
     //int norm_swap_time = 0;
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
-        for (ulong iter = 0; iter < iter_max && stopping_count != n; ++iter) {
+        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
             //calculate x
             for (int i = 0; i < n; ++i) {
                 compute_x_next(A, b, i);
             }
             //compute the error
             //START(start_norm_swap_time);
-
-            compute_stop_condition(n, tol);
+            compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
             swap(x, x_next);
 
@@ -100,7 +99,7 @@ partial_jacobi(const ulong th_id, const ulong start, const ulong end,
 
 
     //Start partial Jacobi method
-    for (ulong iter = 0; iter < iter_max && stopping_count != n; ++iter) {
+    for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
         //calculate partizal x
         for (int i = start; i <= end; ++i) {
             compute_x_next(A, b, i);
@@ -110,7 +109,7 @@ partial_jacobi(const ulong th_id, const ulong start, const ulong end,
 
         //#pragma omp once: error computed only by one threads 
         if (!flag.test_and_set()) {
-            compute_stop_condition(n, tol);
+            compute_error(n, tol);
             if (verbose > 1) std::cout << "TH:"<< th_id<< " - iter: "<< iter << " - Error: " << error << std::endl;
             swap(x, x_next);    
         }
@@ -173,13 +172,13 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
 
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
-        for (ulong iter = 0; iter < iter_max && stopping_count != n; ++iter) {
+        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
             pf.parallel_for(0, n, 1, 0,
                             [&](const long i) {
                                 compute_x_next(A, b, i);
                             },
                             nw);
-            compute_stop_condition(n, tol);
+            compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
             swap(x, x_next);    
         }
