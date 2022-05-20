@@ -48,3 +48,5 @@
 *.vsix
 
 .DS_Store
+bin/parallel_analysis
+bin/test
