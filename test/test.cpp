@@ -19,9 +19,9 @@ float tol           = 10e-6;
 int verbose         = 0;
 
 // Data
-matrix_t A __attribute__((aligned(64)));
-vector_t b __attribute__((aligned(64)));
-vector_t x __attribute__((aligned(64)));
+matrix_t A;
+vector_t b;
+vector_t x;
 
 unsigned int seed = 42;
 std::mt19937 gen(seed);
