@@ -10,6 +10,9 @@ cout_usage()
     fputs("                 seq: sequantion, th: threads, ff: fastflow\n", stdout);
     fputs("-w   nw          define number of workers (nw) in paralell computation\n", stdout);
     fputs("-s   seed        generate a linear system with this seed\n", stdout);
+    fputs("-l   left        uniform distribution ranges:\n", stdout);
+    fputs("-r   right       		A_ij in U[left, right]\n", stdout);
+    fputs("-t   tol         error tolerance \n", stdout);
     fputs("-h               print this help and exit\n", stdout);
     fputs("-v               run in verbose mode, for debug purpose\n", stdout);
 }
