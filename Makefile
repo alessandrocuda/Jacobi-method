@@ -3,7 +3,6 @@ ifeq ($(UNAME_S),Linux)
     CXX = g++
 endif
 ifeq ($(UNAME_S),Darwin)
-	FF_LOCAL = -I $$FF_ROOT
     CXX = g++-11
 endif
 
@@ -11,8 +10,8 @@ endif
 
 # define any compile-time flags
 CXXFLAGS = -std=c++11 -O3 -funsafe-math-optimizations #-fopt-info-vec-missed   #-Wall -g
-
 LDFLAGS = -lpthread #-lboost_system -lcrypto -lssl -lcpprest -lpthread
+FF_LOCAL = -I $$FF_ROOT
 
 OBJDIR = build
 SRCDIR = src

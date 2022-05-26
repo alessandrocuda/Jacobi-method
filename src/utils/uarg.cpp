@@ -15,10 +15,12 @@ cout_usage()
 }
 
 void init_argv(const int argc, char *const argv[], 
-					ulong &n, ulong &mode, ulong &nw, unsigned int &seed, int &verbose) {
+					ulong &n, ulong &mode, ulong &nw, 
+					unsigned int &seed, float &l_range, float &r_range, 
+					float &tol, int &verbose) {
 	int 	c; 					// temp arg for getopt, GNU c lib std
 
-	while ((c = getopt(argc, argv, "n:m:w:s:hv:")) != -1){
+	while ((c = getopt(argc, argv, "n:m:w:s:l:r:t:hv:")) != -1){
 		switch (c){
 			case 'n':
 				if (isdigit(*optarg)){
@@ -43,6 +45,15 @@ void init_argv(const int argc, char *const argv[],
 				if (isdigit(*optarg)){
 					seed = (ulong) atoi(optarg);
 				}
+				break;
+			case 'l':
+				l_range =  atof(optarg);
+				break;
+			case 'r':
+				r_range =  atof(optarg);
+				break;
+			case 't':
+				tol =  atof(optarg);
 				break;
             case 'v':
 				if (isdigit(*optarg)){

@@ -15,7 +15,11 @@ ulong n             = DF_N;
 ulong mode          = SEQ;
 ulong nw            = 1;
 ulong max_iteration = 10000;
-float tol           = 10e-6;
+float tol           = 10e-7;
+unsigned int seed = 20;
+std::mt19937 gen(seed);
+float l_range = -1.0;
+float r_range =  8.0;
 int verbose         = 0;
 
 // Data
@@ -23,9 +27,7 @@ matrix_t A;
 vector_t b;
 vector_t x;
 
-unsigned int seed = 42;
-std::mt19937 gen(seed);
-std::uniform_real_distribution<> dis(1.0, 4.0);
+
 
 inline static void 
 cout_setup(const ulong n, const ulong mode, const ulong nw)
@@ -38,6 +40,7 @@ cout_setup(const ulong n, const ulong mode, const ulong nw)
 inline static void 
 init_linear_system(){
     // has been vectorized, not present with -fopt-info-vector-missed 
+    std::uniform_real_distribution<> dis(l_range, r_range);//dis(-1.0, 8.0);
     for (ulong i = 0; i < n; ++i) {
         float sum = 0;
         vector_t row_vec;
@@ -57,7 +60,7 @@ int
 main(int argc, char *const argv[]){
 
     // Setup parameters
-    init_argv(argc, argv, n, mode, nw, seed, verbose);
+    init_argv(argc, argv, n, mode, nw, seed, l_range, r_range, tol, verbose);
     if (mode == SEQ) nw = 1;
     if (verbose) cout_setup(n, mode, nw);
     nw = min(nw, n);

@@ -83,19 +83,21 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
 
 
 void 
-partial_jacobi(const ulong th_id, const ulong start, const ulong end,
+partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
                const matrix_t &A, const vector_t &b, barrier &spin_barrier,
                const ulong iter_max, const float tol, const int verbose){
 
+    //compute ranges
+    ulong n = x.size();
+    ulong start = th_id * n_chunks;
+    ulong end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
+    
     if (verbose > 1){
         const std::lock_guard<std::mutex> lock(cout_mutex);
         std::cout << "TH_"<< th_id << \
                     ": (" << start <<", "<< end<< ")" << \
                     "#rows: " << (end - start + 1)<< std::endl;
     }
-    
-    int n = x.size();
-    init_stop_condition();
 
 
     //Start partial Jacobi method
@@ -132,6 +134,8 @@ jacobi_th(const matrix_t &A, const vector_t &b,
     //initialize solution with zeros
     ulong n = A.size();
     init_solutions(n); 
+    init_stop_condition();
+
     //initialize barrier and vector of threads 
     barrier spin_barrier(nw);
     std::vector<std::thread> threads;
@@ -141,10 +145,7 @@ jacobi_th(const matrix_t &A, const vector_t &b,
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
         for (ulong i = 0; i < nw; i++) {
-            //compute ranges and pass them to the thread
-            ulong start = i * n_chunks;
-            ulong end = (i != nw - 1 ? start + n_chunks : n) - 1;
-            threads.emplace_back(std::thread(partial_jacobi, i, start, end,
+            threads.emplace_back(std::thread(partial_jacobi, i, n_chunks, nw,
                                                 std::ref(A), std::ref(b), 
                                                 std::ref(spin_barrier),
                                                 iter_max, tol, verbose));
@@ -168,10 +169,12 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
     init_solutions(n); 
     init_stop_condition();
 
-    ff::ParallelFor pf(nw, true, true);
-
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
+        ff::ParallelFor pf(nw, true, true);
+        // In case of static scheduling (chunk <= 0), the scheduler thread is never started.
+        // pf.disableScheduler();
+
         for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
             pf.parallel_for(0, n, 1, 0,
                             [&](const long i) {
@@ -187,4 +190,37 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
 
 }
 
+/*
+// At high value of n the last computation may slow down the whole outer jacobi iteration.
 
+vector_t 
+jacobi_ff_v2(const matrix_t &A, const vector_t &b,
+          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+    
+    //initialize solution with zeros
+    ulong n = A.size();
+    init_solutions(n); 
+    init_stop_condition();
+
+    ff::ParallelFor pf(nw-1, true, true);
+
+    {
+        utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
+        int end_internal_range = n/nw;
+        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+            pf.parallel_for(end_internal_range, n, 1, 0,
+                            [&](const long i) {
+                                compute_x_next(A, b, i);
+                            });
+            for (size_t i = 0; i < end_internal_range; i++){
+                compute_x_next(A, b, i);
+            }
+            compute_error(n, tol);
+            if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
+            swap(x, x_next);    
+        }
+    }
+    return x;
+
+}
+*/

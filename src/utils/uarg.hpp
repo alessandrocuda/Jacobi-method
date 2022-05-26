@@ -12,6 +12,8 @@
 
 void 
 init_argv(const int argc, char *const argv[],
-					ulong &n, ulong &mode, ulong &nw, unsigned int &seed, int &verbose);
+					ulong &n, ulong &mode, ulong &nw, 
+					unsigned int &seed, float &l_range, float &r_range, 
+					float &tol, int &verbose);
 
 #endif // UARG_H
