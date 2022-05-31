@@ -30,12 +30,12 @@ namespace
     }
 
     inline void compute_error(const ulong n, const float tol){
-        error = 0;
+        float local_error = 0;
         // has been vectorized, not present with -fopt-info-vector-missed
         for (ulong i = 0; i < n; ++i){
-            error += std::abs(x[i] - x_next[i]);
+            local_error += std::abs(x[i] - x_next[i]);
         }
-        error /= n;
+        error = local_error/n;
     }
 
     inline void compute_x_next(const matrix_t &A, const vector_t &b, const int i){
@@ -60,11 +60,11 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
     init_stop_condition();
 
     //Start Jacobi method
-    //int norm_swap_time = 0;
+    //long norm_swap_time = 0;
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
         for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
-            //calculate x
+            //compute x
             for (int i = 0; i < n; ++i) {
                 compute_x_next(A, b, i);
             }
@@ -72,12 +72,13 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
             //START(start_norm_swap_time);
             compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
-            swap(x, x_next);
+            std::swap(x, x_next);
 
             // STOP(start_norm_swap_time, elapsed_norm_swap_time);  
             //norm_swap_time += elapsed_norm_swap_time;
         }
     }
+    // std::cout << "Jacobi time: " << jacobi_comp_time << " norm time: " << norm_swap_time << std::endl;
     return x;
 }
 
@@ -106,18 +107,12 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
         for (int i = start; i <= end; ++i) {
             compute_x_next(A, b, i);
         }
-        
-        spin_barrier.busywait();
-
-        //#pragma omp once: error computed only by one threads 
-        if (!flag.test_and_set()) {
+        //barrier + #pragma omp once: error computed only by one threads 
+        spin_barrier.busywait([&] {
             compute_error(n, tol);
             if (verbose > 1) std::cout << "TH:"<< th_id<< " - iter: "<< iter << " - Error: " << error << std::endl;
-            swap(x, x_next);    
-        }
-
-        spin_barrier.busywait();
-        flag.clear();
+            std::swap(x, x_next);    
+        });
     }
     
     if (verbose > 1){
@@ -183,12 +178,107 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
                             nw);
             compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
+            std::swap(x, x_next);    
+        }
+    }
+    return x;
+
+}
+
+// partial_jacobi: MAP+reduce (partial matrix-vector moltiplication + local error computation)
+/*
+void 
+partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
+               const matrix_t &A, const vector_t &b, barrier &spin_barrier,
+               const ulong iter_max, const float tol, const int verbose){
+
+    //compute ranges
+    ulong n = x.size();
+    ulong start = th_id * n_chunks;
+    ulong end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
+    float local_error;    
+    if (verbose > 1){
+        const std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "TH_"<< th_id << \
+                    ": (" << start <<", "<< end<< ")" << \
+                    "#rows: " << (end - start + 1)<< std::endl;
+    }
+
+
+    //Start partial Jacobi method
+    for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+        //calculate partizal x
+	local_error = 0;
+        for (int i = start; i <= end; ++i) {
+            compute_x_next(A, b, i);
+	        local_error += std::abs(x[i] - x_next[i]);
+        }
+
+	    g_r_error[th_id] = local_error;
+        
+        spin_barrier.busywait();
+
+        //#pragma omp once: error computed only by one threads 
+        if (!flag.test_and_set()) {
+          //compute_error(n, tol);
+	        error = 0;
+	        for (int i = 0; i < g_r_error.size(); ++i)
+		        error += g_r_error[i];
+	        error/=n;
+            if (verbose > 1) std::cout << "TH:"<< th_id<< " - iter: "<< iter << " - Error: " << error << std::endl;
+            swap(x, x_next);    
+        }
+
+        spin_barrier.busywait();
+        flag.clear();
+    }
+    
+    if (verbose > 1){
+        const std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "TH_"<< th_id << ": exit"<< std::endl;
+    }
+    
+}
+*/
+
+// FastFlow implementation with MAP+reduce
+/* 
+vector_t 
+jacobi_ff(const matrix_t &A, const vector_t &b,
+          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+    
+    //initialize solution with zeros
+    ulong n = A.size();
+    init_solutions(n); 
+    init_stop_condition();
+
+    {
+        utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
+        ff::ParallelForReduce<double> pf(nw, true, true);
+        // In case of static scheduling (chunk <= 0), the scheduler thread is never started.
+        // pf.disableScheduler();
+	    double lerror;
+        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+            lerror = 0.0;
+		    pf.parallel_reduce(lerror, 0.0, 
+                                0, n, 
+                                1, 0,
+                                [&](const long i, double& lerror) {
+                                    compute_x_next(A, b, i);
+				                    lerror += std::abs(x[i] - x_next[i]); 
+                                },
+			                    [](double& s, const double& d) { s+=d;},
+                                nw);
+	        error = lerror/n;
+            //compute_error(n, tol);
+            if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
             swap(x, x_next);    
         }
     }
     return x;
 
 }
+*/
 
 /*
 // At high value of n the last computation may slow down the whole outer jacobi iteration.
@@ -217,7 +307,7 @@ jacobi_ff_v2(const matrix_t &A, const vector_t &b,
             }
             compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
-            swap(x, x_next);    
+            std::swap(x, x_next);    
         }
     }
     return x;

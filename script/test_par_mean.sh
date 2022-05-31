@@ -1,8 +1,6 @@
 #!/bin/bash
 # This bash script lauches the input program $1 and tests it with increasing parallelism degree in a loop up to 'par'.
 # Each iteration is an average of 'iter' number of independent runs.
-#
-# Usage example: ./test_par.sh bin/test 10 256 5 input.txt output.txt
 
 if [ $# -ne 4 ]; then
     echo "./bin/test [matrix_dim_value] [method] [max_nw] [iter]"

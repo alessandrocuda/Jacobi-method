@@ -4,17 +4,21 @@ static void
 cout_usage()
 {
     fputs("Jacobi Test: [OPTIONS]\n", stdout);
-    //fputs("\n", stdout);
-    fputs("-n   N           define matrix dimension NxN, N >1 \n", stdout);
-    fputs("-m   mode        define jacobi implementation mode = [seq, th, ff]\n", stdout);
-    fputs("                 seq: sequantion, th: threads, ff: fastflow\n", stdout);
-    fputs("-w   nw          define number of workers (nw) in paralell computation\n", stdout);
-    fputs("-s   seed        generate a linear system with this seed\n", stdout);
-    fputs("-l   left        uniform distribution ranges:\n", stdout);
-    fputs("-r   right       		A_ij in U[left, right]\n", stdout);
-    fputs("-t   tol         error tolerance \n", stdout);
+	fputs("Parameters related on problem dimension, method and parallel degree:",stdout);
+    fputs("-n   N           matrix dimension NxN, N >1, default N=10 \n", stdout);
+    fputs("-m   mode        implementation mode = [seq, th, ff], default mode=seq \n", stdout);
+    fputs("                 seq: sequential, th: threads, ff: fastflow \n", stdout);
+    fputs("-w   nw          number of workers/threads (nw) used in the paralell computation, default nw=1\n", stdout);
+    fputs("-t   tol         the stop condition error tolerance, default tol=10e-7 \n", stdout);
+    fputs("\n", stdout);
+	fputs("Parameters related on how the linear system is generated: set a certain seed, \n", stdout);
+	fputs("draws from a uniform distribution with ranges A_ij in U[lv, rv], \n",stdout);
+	fputs("and  made it strictly diagonal dominant: \n ",stdout);
+    fputs("-s   seed        default seed= 20\n", stdout);
+    fputs("-l   lv          default lv  = -1.0\n", stdout);
+    fputs("-r   rv          default rv  = -8.0\n", stdout);
     fputs("-h               print this help and exit\n", stdout);
-    fputs("-v               run in verbose mode, for debug purpose\n", stdout);
+    fputs("-v               verbose level, 0: None, 1:print problem, results and times, \n", stdout);
 }
 
 void init_argv(const int argc, char *const argv[], 

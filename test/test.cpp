@@ -16,10 +16,10 @@ ulong mode          = SEQ;
 ulong nw            = 1;
 ulong max_iteration = 10000;
 float tol           = 10e-7;
-unsigned int seed = 20;
+unsigned int seed   = 20;
 std::mt19937 gen(seed);
-float l_range = -1.0;
-float r_range =  8.0;
+float l_range       = -1.0;
+float r_range       =  8.0;
 int verbose         = 0;
 
 // Data
@@ -39,7 +39,7 @@ cout_setup(const ulong n, const ulong mode, const ulong nw)
 
 inline static void 
 init_linear_system(){
-    // has been vectorized, not present with -fopt-info-vector-missed 
+    // not present with -fopt-info-vector-missed 
     std::uniform_real_distribution<> dis(l_range, r_range);//dis(-1.0, 8.0);
     for (ulong i = 0; i < n; ++i) {
         float sum = 0;
