@@ -22,6 +22,6 @@ do
 	# loop for multiple independent iterations to reduce variance
 	for j in  $(seq 1 1 $iter)
 	do
-		./bin/test -n $n -m $m -w $i -l -2 -r 2; 
+		./bin/test -n $n -m $m -w $i -l -2 -r 2 -t 10e-6 -s 20; 
 	done | grep jacobi | awk -v iter=$iter -v par=$i '{sum += $4} END {print sprintf("%s | \t%.3f", par, sum/iter)}'
 done
