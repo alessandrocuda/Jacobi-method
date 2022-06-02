@@ -60,7 +60,7 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
     init_stop_condition();
 
     //Start Jacobi method
-    //long norm_swap_time = 0;
+    long norm_swap_time = 0;
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
         for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
@@ -69,16 +69,17 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
                 compute_x_next(A, b, i);
             }
             //compute the error
-            //START(start_norm_swap_time);
+            START(start_norm_swap_time);
             compute_error(n, tol);
             if (verbose > 1) std::cout << "Iter: "<< iter << std::setw(10) << "Error: " << error << std::endl;
             std::swap(x, x_next);
 
-            // STOP(start_norm_swap_time, elapsed_norm_swap_time);  
-            //norm_swap_time += elapsed_norm_swap_time;
+            STOP(start_norm_swap_time, elapsed_norm_swap_time);  
+            norm_swap_time += elapsed_norm_swap_time;
         }
     }
-    // std::cout << "Jacobi time: " << jacobi_comp_time << " norm time: " << norm_swap_time << std::endl;
+    if (verbose > 0)
+    std::cout << "Jacobi time: " << jacobi_comp_time << " norm time: " << norm_swap_time << std::endl;
     return x;
 }
 
@@ -93,7 +94,7 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
     ulong start = th_id * n_chunks;
     ulong end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
     
-    if (verbose > 1){
+    if (verbose > 2){
         const std::lock_guard<std::mutex> lock(cout_mutex);
         std::cout << "TH_"<< th_id << \
                     ": (" << start <<", "<< end<< ")" << \
@@ -115,7 +116,7 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
         });
     }
     
-    if (verbose > 1){
+    if (verbose > 2){
         const std::lock_guard<std::mutex> lock(cout_mutex);
         std::cout << "TH_"<< th_id << ": exit"<< std::endl;
     }
@@ -150,7 +151,9 @@ jacobi_th(const matrix_t &A, const vector_t &b,
             th.join();    
     }
 
-
+    if (verbose > 0)
+    std::cout << "Jacobi time: " << jacobi_comp_time << std::endl;
+    
     return x;
 }
 
@@ -181,6 +184,9 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
             std::swap(x, x_next);    
         }
     }
+    if (verbose > 0)
+    std::cout << "Jacobi time: " << jacobi_comp_time << std::endl;
+    
     return x;
 
 }
