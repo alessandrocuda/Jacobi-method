@@ -1,15 +1,15 @@
 #include <atomic>
+#include <stdint.h>
+#include <thread>
+#include <stdexcept>
 #include <functional>
 
-
 class barrier {
-private:
-    const int N_THREADS;
-    int counts[2];
+  uint64_t _count;
+  std::atomic_bool _sense;
+  std::atomic<uint64_t> _n;
 
 public:
-    barrier(int n);
-    std::atomic<int> count;
-    std::atomic<int> generation;
-    bool busywait(std::function<void()> f);
+    barrier(uint64_t count);
+    void busywait(std::function<void()> f);
 };

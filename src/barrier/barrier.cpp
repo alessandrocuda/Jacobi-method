@@ -1,18 +1,16 @@
 #include "barrier.hpp"
 
-barrier::barrier(int n)
-    : N_THREADS(n), count(0), generation(0) {}
-
-bool barrier::busywait(std::function<void()> f) {
-  int my_gen = generation.load();
-  if (count.fetch_add(1) == N_THREADS - 1) {
-    f();
-    count.store(0);
-    generation.fetch_add(1);
-    return true;
-  } else {
-    do {
-    } while (my_gen == generation.load());
-    return false;
+barrier::barrier(uint64_t count): _count(count){
+    _n.store(count);
   }
+
+void barrier::busywait(std::function<void()> f) {
+    bool priv_sense = _sense.load();
+    if (_n.fetch_sub(1) == 1){
+      f();
+      _n.store(_count);
+      _sense.store(!priv_sense);
+    }else{
+      while (priv_sense == _sense.load());
+    }
 }
