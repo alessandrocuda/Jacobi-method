@@ -4,7 +4,7 @@ static void
 cout_usage()
 {
     fputs("Jacobi Test: [OPTIONS]\n", stdout);
-	fputs("Parameters related on problem dimension, method and parallel degree:",stdout);
+	fputs("Parameters related on problem dimension, method and parallel degree:\n",stdout);
     fputs("-n   N           matrix dimension NxN, N >1, default N=10 \n", stdout);
     fputs("-m   mode        implementation mode = [seq, th, ff], default mode=seq \n", stdout);
     fputs("                 seq: sequential, th: threads, ff: fastflow \n", stdout);
@@ -12,8 +12,8 @@ cout_usage()
     fputs("-t   tol         the stop condition error tolerance, default tol=10e-7 \n", stdout);
     fputs("\n", stdout);
 	fputs("Parameters related on how the linear system is generated: set a certain seed, \n", stdout);
-	fputs("draws from a uniform distribution with ranges A_ij in U[lv, rv], \n",stdout);
-	fputs("and  made it strictly diagonal dominant: \n ",stdout);
+	fputs("draws from a uniform distribution with ranges A_ij in U[lv, rv], and made it \n",stdout);
+	fputs("strictly diagonal dominant: \n",stdout);
     fputs("-s   seed        default seed= 20\n", stdout);
     fputs("-l   lv          default lv  = -1.0\n", stdout);
     fputs("-r   rv          default rv  = -8.0\n", stdout);
