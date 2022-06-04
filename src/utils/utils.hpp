@@ -3,7 +3,6 @@
 
 #include <map>
 #include <string>
-typedef unsigned long ulong;
 
 #define DF_N 10
 #define DF_W 1
@@ -15,7 +14,7 @@ typedef unsigned long ulong;
 #define THREADS "th"
 #define FASTFLOW "ff"
 
-static const std::map<ulong, const std::string> m = {
+static const std::map<uint64_t, const std::string> m = {
                 {SEQ, "sequential"}, 
                 {TH, "threads"}, 
                 {FF, "fastflow"}};

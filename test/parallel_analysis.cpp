@@ -21,7 +21,7 @@ vector<int> n_workers = {1, 2, 4, 8, 12, 16, 20, 24, 28, 32};
 int n_exec = 10;
 float mean_seq, mean_th, mean_ff;
 // Parameters
-ulong max_iteration = 10000;
+uint64_t max_iteration = 10000;
 float tol           = 10e-6;
 int verbose         = 0;
 
@@ -32,10 +32,10 @@ std::uniform_real_distribution<> dis(-2.0, 2.0);
 
 inline static void 
 init_linear_system(matrix_t &A, vector_t &b, const int n){
-    for (ulong i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         float sum = 0;
         vector_t row_vec;
-        for (ulong j = 0; j < n; ++j){
+        for (size_t j = 0; j < n; ++j){
             float value = dis(gen);
             sum += abs(value);
             row_vec.emplace_back(value);
@@ -97,7 +97,7 @@ main(int argc, char *const argv[]){
         }          
 
         mean_seq = 0;
-        for (int i = 0; i < n_exec; i++){
+        for (size_t i = 0; i < n_exec; i++){
             jacobi_seq(A, b, max_iteration, tol, verbose);
             mean_seq += jacobi_comp_time;
             //jacobi_th(A, b, max_iteration, tol, verbose, nw);
@@ -111,7 +111,7 @@ main(int argc, char *const argv[]){
 
         for(auto &nw : n_workers){
             mean_th = 0;
-            for (int i = 0; i < n_exec; i++){
+            for (size_t i = 0; i < n_exec; i++){
                 jacobi_th(A, b, max_iteration, tol, nw, verbose);
                 mean_th += jacobi_comp_time;
             }
@@ -122,7 +122,7 @@ main(int argc, char *const argv[]){
 
         for(auto &nw : n_workers){
             mean_ff = 0;
-            for (int i = 0; i < n_exec; i++){
+            for (size_t i = 0; i < n_exec; i++){
                 jacobi_ff(A, b, max_iteration, tol, nw, verbose);
                 mean_ff += jacobi_comp_time;
             }

@@ -17,14 +17,14 @@ LD_PRELOAD=../jemalloc/lib/libjemalloc.so.2 ./bin/test -n 10000 -m th -w 16 -t 1
 //    - require double barrier (less efficient)
 
 void 
-partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
+partial_jacobi(const uint64_t th_id, const uint64_t n_chunks, const uint64_t nw,
                const matrix_t &A, const vector_t &b, barrier &spin_barrier,
-               const ulong iter_max, const float tol, const int verbose){
+               const uint64_t iter_max, const float tol, const int verbose){
 
     //compute ranges
-    ulong n = x.size();
-    ulong start = th_id * n_chunks;
-    ulong end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
+    uint64_t n = x.size();
+    uint64_t start = th_id * n_chunks;
+    uint64_t end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
     float local_error;    
     if (verbose > 1){
         const std::lock_guard<std::mutex> lock(cout_mutex);
@@ -35,10 +35,10 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
 
 
     //Start partial Jacobi method
-    for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+    for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
         //calculate partizal x
 	local_error = 0;
-        for (int i = start; i <= end; ++i) {
+        for (size_t i = start; i <= end; ++i) {
             compute_x_next(A, b, i);
 	        local_error += std::abs(x[i] - x_next[i]);
         }
@@ -51,7 +51,7 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
         if (!flag.test_and_set()) {
           //compute_error(n, tol);
 	        error = 0;
-	        for (int i = 0; i < th_error.size(); ++i)
+	        for (size_t i = 0; i < th_error.size(); ++i)
 		        error += th_error[i];
 	        error/=n;
             if (verbose > 1) std::cout << "TH:"<< th_id<< " - iter: "<< iter << " - Error: " << error << std::endl;
@@ -75,10 +75,10 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
 // FastFlow implementation with MAP+reduce
 vector_t 
 jacobi_ff(const matrix_t &A, const vector_t &b,
-          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
     
     //initialize solution with zeros
-    ulong n = A.size();
+    uint64_t n = A.size();
     init_solutions(n); 
     init_stop_condition();
 
@@ -88,7 +88,7 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
         // In case of static scheduling (chunk <= 0), the scheduler thread is never started.
         // pf.disableScheduler();
 	    double lerror;
-        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+        for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
             lerror = 0.0;
 		    pf.parallel_reduce(lerror, 0.0, 
                                 0, n, 
@@ -115,10 +115,10 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
 
 vector_t 
 jacobi_ff_v2(const matrix_t &A, const vector_t &b,
-          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
     
     //initialize solution with zeros
-    ulong n = A.size();
+    uint64_t n = A.size();
     init_solutions(n); 
     init_stop_condition();
 
@@ -127,7 +127,7 @@ jacobi_ff_v2(const matrix_t &A, const vector_t &b,
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
         int end_internal_range = n/nw;
-        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+        for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
             pf.parallel_for(end_internal_range, n, 1, 0,
                             [&](const long i) {
                                 compute_x_next(A, b, i);

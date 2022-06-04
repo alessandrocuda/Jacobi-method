@@ -22,7 +22,7 @@ cout_usage()
 }
 
 void init_argv(const int argc, char *const argv[], 
-					ulong &n, ulong &mode, ulong &nw, 
+					uint64_t &n, uint64_t &mode, uint64_t &nw, 
 					unsigned int &seed, float &l_range, float &r_range, 
 					float &tol, int &verbose) {
 	int 	c; 					// temp arg for getopt, GNU c lib std
@@ -31,7 +31,7 @@ void init_argv(const int argc, char *const argv[],
 		switch (c){
 			case 'n':
 				if (isdigit(*optarg)){
-					n = (ulong) atoi(optarg);
+					n = (uint64_t) atoi(optarg);
 				}
 				break;
 			case 'm':
@@ -45,12 +45,12 @@ void init_argv(const int argc, char *const argv[],
 				break;
 			case 'w':
 				if (isdigit(*optarg)){
-					nw = (ulong) atoi(optarg);
+					nw = (uint64_t) atoi(optarg);
 				}
 				break;
 			case 's':
 				if (isdigit(*optarg)){
-					seed = (ulong) atoi(optarg);
+					seed = (uint64_t) atoi(optarg);
 				}
 				break;
 			case 'l':
@@ -64,7 +64,7 @@ void init_argv(const int argc, char *const argv[],
 				break;
             case 'v':
 				if (isdigit(*optarg)){
-					verbose = (ulong) atoi(optarg);
+					verbose = (uint64_t) atoi(optarg);
 				}
                 break;
 			case 'h':

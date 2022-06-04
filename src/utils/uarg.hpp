@@ -12,7 +12,7 @@
 
 void 
 init_argv(const int argc, char *const argv[],
-					ulong &n, ulong &mode, ulong &nw, 
+					uint64_t &n, uint64_t &mode, uint64_t &nw, 
 					unsigned int &seed, float &l_range, float &r_range, 
 					float &tol, int &verbose);
 

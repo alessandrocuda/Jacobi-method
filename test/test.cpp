@@ -11,10 +11,10 @@
 using namespace std;
 
 // Parameters
-ulong n             = DF_N;
-ulong mode          = SEQ;
-ulong nw            = 1;
-ulong max_iteration = 10000;
+uint64_t n             = DF_N;
+uint64_t mode          = SEQ;
+uint64_t nw            = 1;
+uint64_t max_iteration = 10000;
 float tol           = 10e-7;
 unsigned int seed   = 20;
 std::mt19937 gen(seed);
@@ -30,7 +30,7 @@ vector_t x;
 
 
 inline static void 
-cout_setup(const ulong n, const ulong mode, const ulong nw)
+cout_setup(const uint64_t n, const uint64_t mode, const uint64_t nw)
 {
     cout << "Jacobi Test:" << endl;
     cout << "- generate a Linear system with " << n << " vars;" << endl;
@@ -41,10 +41,10 @@ inline static void
 init_linear_system(){
     // not present with -fopt-info-vector-missed 
     std::uniform_real_distribution<> dis(l_range, r_range);//dis(-1.0, 8.0);
-    for (ulong i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         float sum = 0;
         vector_t row_vec;
-        for (ulong j = 0; j < n; ++j){
+        for (size_t j = 0; j < n; ++j){
             float value = dis(gen);
             sum += abs(value);
             row_vec.emplace_back(value);

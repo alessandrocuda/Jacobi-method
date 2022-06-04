@@ -17,7 +17,7 @@ namespace
     vector_t x_next;
     vector_t x;
 
-    inline void init_solutions(const ulong n){
+    inline void init_solutions(const uint64_t n){
         x.clear();
         x_next.clear();
         zeros_vector(n, x);
@@ -29,10 +29,10 @@ namespace
         //stopping_count = 0;
     }
 
-    inline void compute_error(const ulong n, const float tol){
+    inline void compute_error(const uint64_t n, const float tol){
         float local_error = 0;
         // has been vectorized, not present with -fopt-info-vector-missed
-        for (ulong i = 0; i < n; ++i){
+        for (size_t i = 0; i < n; ++i){
             local_error += std::abs(x[i] - x_next[i]);
         }
         error = local_error/n;
@@ -41,7 +41,7 @@ namespace
     inline void compute_x_next(const matrix_t &A, const vector_t &b, const int i){
         float sigma = 0;
         // has been vectorized, not present with -fopt-info-vector-missed
-        for (int j = 0; j < A.size(); ++j) {
+        for (size_t j = 0; j < A.size(); ++j) {
             sigma += (x[j] * A[i][j]);
         }
         x_next[i] = (-sigma + b[i] + x[i]*A[i][i]) / A[i][i];
@@ -52,9 +52,9 @@ long jacobi_comp_time;
 
 vector_t 
 jacobi_seq(const matrix_t &A, const vector_t &b,
-           const ulong iter_max, const float tol, const int verbose) {
+           const uint64_t iter_max, const float tol, const int verbose) {
 
-    ulong n = A.size();
+    uint64_t n = A.size();
     //initialize solution with zeros
     init_solutions(n);
     init_stop_condition();
@@ -63,9 +63,9 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
     long norm_swap_time = 0;
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
-        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+        for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
             //compute x
-            for (int i = 0; i < n; ++i) {
+            for (size_t i = 0; i < n; ++i) {
                 compute_x_next(A, b, i);
             }
             //compute the error
@@ -85,14 +85,14 @@ jacobi_seq(const matrix_t &A, const vector_t &b,
 
 
 void 
-partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
+partial_jacobi(const uint64_t th_id, const uint64_t n_chunks, const uint64_t nw,
                const matrix_t &A, const vector_t &b, barrier &spin_barrier,
-               const ulong iter_max, const float tol, const int verbose){
+               const uint64_t iter_max, const float tol, const int verbose){
 
     //compute ranges
-    ulong n = x.size();
-    ulong start = th_id * n_chunks;
-    ulong end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
+    uint64_t n = x.size();
+    uint64_t start = th_id * n_chunks;
+    uint64_t end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
     
     if (verbose > 2){
         const std::lock_guard<std::mutex> lock(cout_mutex);
@@ -103,9 +103,9 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
 
 
     //Start partial Jacobi method
-    for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+    for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
         //calculate partizal x
-        for (int i = start; i <= end; ++i) {
+        for (size_t i = start; i <= end; ++i) {
             compute_x_next(A, b, i);
         }
         //barrier + #pragma omp once: error computed only by one threads 
@@ -125,10 +125,10 @@ partial_jacobi(const ulong th_id, const ulong n_chunks, const ulong nw,
 
 vector_t 
 jacobi_th(const matrix_t &A, const vector_t &b,
-          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
 
     //initialize solution with zeros
-    ulong n = A.size();
+    uint64_t n = A.size();
     init_solutions(n); 
     init_stop_condition();
 
@@ -136,11 +136,11 @@ jacobi_th(const matrix_t &A, const vector_t &b,
     barrier spin_barrier(nw);
     std::vector<std::thread> threads;
     //compute #chunks 
-    ulong n_chunks = n / nw;
+    uint64_t n_chunks = n / nw;
 
     {
         utimer timer("Jacobi main loop", &jacobi_comp_time, verbose);
-        for (ulong i = 0; i < nw; i++) {
+        for (size_t i = 0; i < nw; i++) {
             threads.emplace_back(std::thread(partial_jacobi, i, n_chunks, nw,
                                                 std::ref(A), std::ref(b), 
                                                 std::ref(spin_barrier),
@@ -160,10 +160,10 @@ jacobi_th(const matrix_t &A, const vector_t &b,
 
 vector_t 
 jacobi_ff(const matrix_t &A, const vector_t &b,
-          const ulong iter_max, const float tol, const ulong nw, const int verbose){
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
     
     //initialize solution with zeros
-    ulong n = A.size();
+    uint64_t n = A.size();
     init_solutions(n); 
     init_stop_condition();
 
@@ -173,7 +173,7 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
         // In case of static scheduling (chunk <= 0), the scheduler thread is never started.
         // pf.disableScheduler();
 
-        for (ulong iter = 0; iter < iter_max && error > tol; ++iter) {
+        for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
             pf.parallel_for(0, n, 1, 0,
                             [&](const long i) {
                                 compute_x_next(A, b, i);
