@@ -13,6 +13,75 @@ LD_PRELOAD=../jemalloc/lib/libjemalloc.so.2 ./bin/test -n 10000 -m th -w 16 -t 1
 ```c++
 // partial_jacobi: 
 //    - MAP+reduce (partial matrix-vector moltiplication  local error computation) 
+//    - plus padding to reduce cacha fault
+
+
+namespace 
+{  
+    // ...
+    vector_t th_error;
+    // ...
+}
+
+void 
+partial_jacobi(const uint64_t th_id, const uint64_t n_chunks, const uint64_t nw,
+               const matrix_t &A, const vector_t &b, barrier &spin_barrier,
+               const uint64_t iter_max, const float tol, const int verbose){
+
+    //compute ranges
+    uint64_t n = x.size();
+    uint64_t start = th_id * n_chunks;
+    uint64_t end = (th_id != nw - 1 ? start + n_chunks : n) - 1;
+    
+    if (verbose > 2){
+        const std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "TH_"<< th_id << \
+                    ": (" << start <<", "<< end<< ")" << \
+                    "#rows: " << (end - start + 1)<< std::endl;
+    }
+
+    float local_error;
+    //Start partial Jacobi method
+    for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
+        //calculate partizal x
+        for (size_t i = start; i <= end; ++i) {
+            compute_x_next(A, b, i);
+        }
+        local_error = 0.0;
+        for (size_t i = start; i <= end; ++i){
+            local_error += std::abs(x[i] - x_next[i]);
+        }
+        th_error[th_id*16] = local_error/n;
+        //barrier + #pragma omp once: error computed only by one threads 
+        spin_barrier.busywait([&] {
+            //compute_error(n, tol);
+	        error = 0;
+	        for (size_t i = 0; i < th_error.size(); ++i)
+		        error += th_error[i];
+            if (verbose > 1) std::cout << "TH:"<< th_id<< " - iter: "<< iter << " - Error: " << error << std::endl;
+            std::swap(x, x_next);    
+        });
+    }
+    
+    if (verbose > 2){
+        const std::lock_guard<std::mutex> lock(cout_mutex);
+        std::cout << "TH_"<< th_id << ": exit"<< std::endl;
+    }
+    
+}
+vector_t 
+jacobi_th(const matrix_t &A, const vector_t &b,
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
+    // ...
+    th_error.clear();
+    zeros_vector(nw*16, th_error);
+    // ...
+}
+```
+
+```c++
+// partial_jacobi: 
+//    - MAP+reduce (partial matrix-vector moltiplication  local error computation) 
 //    - std::atomic_flag flag to execute the global error only once.
 //    - require double barrier (less efficient)
 
@@ -71,6 +140,7 @@ partial_jacobi(const uint64_t th_id, const uint64_t n_chunks, const uint64_t nw,
 
 ```
 
+
 ```c++
 // FastFlow implementation with MAP+reduce
 vector_t 
@@ -108,6 +178,7 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
     return x;
 
 }
+```
 
 ```c++
 // fastflow: leave last chuck to be computed by the main thread, to remove a thread. 
