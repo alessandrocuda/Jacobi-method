@@ -13,8 +13,7 @@ LD_PRELOAD=../jemalloc/lib/libjemalloc.so.2 ./bin/test -n 10000 -m th -w 16 -t 1
 ```c++
 // partial_jacobi: 
 //    - MAP+reduce (partial matrix-vector moltiplication  local error computation) 
-//    - plus padding to reduce cacha fault
-
+//    - plus padding to reduce the cache coherence protocol calls
 
 namespace 
 {  
