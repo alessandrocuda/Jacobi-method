@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 #include <ff/parallel_for.hpp>
+#include <ff/ff.hpp>
 
 #include "utils/umath.hpp"
 #include "utils/utils.hpp"
