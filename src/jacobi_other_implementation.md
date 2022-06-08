@@ -260,6 +260,7 @@ struct Emitter:ff_monode_t<double, pair_t> {
             if (!(iter < iter_max && error > tol))
                 broadcast_task(EOS);
             else{
+                count = nw;
                 uint64_t n = x.size();
                 for(int i=0;i<nw;++i) {
                     //compute ranges
