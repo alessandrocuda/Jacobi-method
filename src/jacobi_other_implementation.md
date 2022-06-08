@@ -43,11 +43,9 @@ partial_jacobi(const uint64_t th_id, const uint64_t n_chunks, const uint64_t nw,
     //Start partial Jacobi method
     for (size_t iter = 0; iter < iter_max && error > tol; ++iter) {
         //calculate partizal x
+        local_error = 0.0;
         for (size_t i = start; i <= end; ++i) {
             compute_x_next(A, b, i);
-        }
-        local_error = 0.0;
-        for (size_t i = start; i <= end; ++i){
             local_error += std::abs(x[i] - x_next[i]);
         }
         th_error[th_id*16] = local_error/n;
@@ -182,7 +180,6 @@ jacobi_ff(const matrix_t &A, const vector_t &b,
 ```c++
 // fastflow: leave last chuck to be computed by the main thread, to remove a thread. 
 // At high value of n the last computation may slow down the whole outer jacobi iteration.
-
 vector_t 
 jacobi_ff_v2(const matrix_t &A, const vector_t &b,
           const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
@@ -211,6 +208,136 @@ jacobi_ff_v2(const matrix_t &A, const vector_t &b,
         }
     }
     return x;
+
+}
+```
+
+```c++
+// FastFlow Master-worker implementation
+// TBF
+// early alpha, nevered tested, it's just the idea.
+/*
+ * Parallel schema:
+ *
+ *                | ---> Worker -|
+ *                |              |
+ *    Emitter --> | ---> Worker -|--|
+ *       ^        |              |  |
+ *       |        | ---> Worker -|  |
+ *       |__________________________|
+ *
+ */
+
+#include <iostream>
+#include <iomanip>
+#include <ff/ff.hpp>
+#include <ff/farm.hpp>
+
+using namespace ff;
+
+// this is the message type used between the Emitter and the Workers
+using pair_t = std::pair<int,int>;
+
+struct Emitter:ff_monode_t<double, pair_t> {
+    Emitter(const matrix_t &A, const vector_t &b,
+            const uint64_t iter_max, const float tol, 
+            const uint64_t nw):num_steps(num_steps),nw(nw) {
+        uint64_t n = A.size();
+        pairs = new pair_t[nw+1];
+        n_chunks = n/ (nw+1);
+        for(int i=0; i< nw+1; ++i) {
+            //compute ranges
+            uint64_t start = i * n_chunks;
+            uint64_t end = (i != (nw+1) - 1 ? start + n_chunks : n) - 1;
+            pairs[i] = { start, end };
+        }
+        count = nw;
+    }
+    ~Emitter() { if (pairs) delete [] pairs; }
+    
+    pair_t* svc(double *s) {
+        if (s==nullptr || (count == 0 && (iter < iter_max && error > tol))) {
+            if (!(iter < iter_max && error > tol))
+                broadcast_task(EOS);
+            else{
+                uint64_t n = x.size();
+                for(int i=0;i<nw;++i) {
+                    //compute ranges
+                    ff_send_out_to(&pairs[i], i); // assigns the pair to Worker i
+                }
+                const int start{pairs[nw+1]->first}, end{pairs[nw+1]->second};
+                // -- working on my partition --
+                for (size_t i = start; i <= end; ++i) {
+                    compute_x_next(A, b, i);
+                    error += std::abs(x[i] - x_next[i]);
+                }
+                error /=n;
+                // ----------------------------
+                return GO_ON;
+            }
+        }
+        error+=*s;
+        --count;
+        return GO_ON;            
+    }
+    
+    const matrix_t &A; 
+    const vector_t &b;
+    const uint64_t iter_max; 
+    const float tol;
+    const int  nw;
+    const uint64_t n_chunks;
+    int count;
+    pair_t* pairs = nullptr; // vector of pairs, one for each Worker
+    double sum=0.0;
+};
+struct Worker:ff_node_t<pair_t, double> {
+    Worker(const matrix_t &A, const vector_t &bp):A(A), b(b) {}
+    double* svc(pair_t* in) {
+        const int start{in->first}, end{in->second};
+        local_error=0.0;
+        for (size_t i = start; i <= end; ++i) {
+            compute_x_next(A, b, i);
+            local_error += std::abs(x[i] - x_next[i]);
+        }
+        local_error /=n;
+        return &local_error
+    }
+    const matrix_t &A; 
+    const vector_t &b;
+    double local_error=0.0;
+};
+
+void 
+jacobi_ff(const matrix_t &A, const vector_t &b,
+          const uint64_t iter_max, const float tol, const uint64_t nw, const int verbose){
+    
+    //initialize solution with zeros
+    uint64_t n = A.size();
+    init_solutions(n); 
+    init_stop_condition();
+
+    ffTime(START_TIME);
+
+    Emitter E(A, b, ,iter_max, tol, nw-1, verbose);
+    ff_Farm<> farm( [&]() {
+                std::vector<std::unique_ptr<ff_node> > W;
+                for(int i=0;i<nw-1;++i)
+                    W.push_back(make_unique<Worker>(A, b));
+                return W;
+            } (),
+            E);
+    farm.remove_collector();
+    farm.wrap_around();
+    if (farm.run_and_wait_end()<0) {
+        error("running farm");
+        return -1;
+    }
+
+    ffTime(STOP_TIME);
+    std::cout << "Jacobi - (Computed in "
+              << std::setprecision(4) << ffTime(GET_TIME) << " ms)"  << std::endl;
+    return(0);
 
 }
 ```
